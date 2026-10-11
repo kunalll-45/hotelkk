@@ -21,7 +21,7 @@ import qrRoutes from './routes/qrRoutes.js';
 import createBookingRouter from './routes/bookingRoutes.js';
 import createLogRouter from './routes/logRoutes.js';
 import createOfferRouter from './routes/offerRoutes.js';
-import createUploadRouter from './routes/uploadRoutes.js';
+import createUploadRouter, { createUploadRetrievalRouter } from './routes/uploadRoutes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -43,9 +43,9 @@ const BODY_LIMIT = process.env.BODY_LIMIT || '15mb';
 app.use(express.json({ limit: BODY_LIMIT }));
 app.use(express.urlencoded({ limit: BODY_LIMIT, extended: true }));
 
-// Serve uploaded images statically
-const dataUploadsDir = path.join(__dirname, '..', 'data', 'uploads');
-app.use('/uploads', express.static(dataUploadsDir));
+// Secure S3 image retrieval with local fallback
+app.use('/uploads', createUploadRetrievalRouter());
+app.use('/dishes', createUploadRetrievalRouter());
 
 // Initialize Database & Seed Data
 await initDatabase();

@@ -103,12 +103,22 @@ export default function MenuManagementView() {
 
     try {
       setUploadingImage(true);
-      const res = await api.uploadImage(file);
+      const res = await api.uploadImage(file, formData.name || 'dish');
       setFormData((prev) => ({ ...prev, imageUrl: res.url }));
     } catch (err) {
       alert(err.message || 'Failed to upload dish image.');
     } finally {
       setUploadingImage(false);
+    }
+  };
+
+  const handleDeleteItem = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to delete "${name}"? This will also remove unused S3 photos.`)) return;
+    try {
+      await api.deleteMenuItem(id);
+      loadMenu();
+    } catch (err) {
+      alert(err.message || 'Failed to delete dish');
     }
   };
 
@@ -234,6 +244,7 @@ export default function MenuManagementView() {
                             src={item.image_url || 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=200'}
                             alt={item.name}
                             className="w-full h-full object-cover"
+                            onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=200'; }}
                           />
                         </div>
                         <div>
@@ -319,12 +330,21 @@ export default function MenuManagementView() {
                       </td>
 
                       <td className="py-3 px-4 text-right">
-                        <button
-                          onClick={() => handleOpenEdit(item)}
-                          className="px-3 py-1 bg-surface-container-high hover:bg-surface-variant font-bold text-gray-700 rounded-lg text-xs"
-                        >
-                          Edit
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleOpenEdit(item)}
+                            className="px-3 py-1 bg-surface-container-high hover:bg-surface-variant font-bold text-gray-700 rounded-lg text-xs"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteItem(item.id, item.name)}
+                            className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 font-bold text-rose-700 border border-rose-200 rounded-lg text-xs transition-colors"
+                            title="Delete dish and cleanup photo"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );

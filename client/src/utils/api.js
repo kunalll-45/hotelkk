@@ -64,6 +64,7 @@ export const api = {
   getMenuItemById: (id) => request(`/menu/${id}`),
   createMenuItem: (data) => request('/menu', { method: 'POST', body: data }),
   updateMenuItem: (id, data) => request(`/menu/${id}`, { method: 'PUT', body: data }),
+  deleteMenuItem: (id) => request(`/menu/${id}`, { method: 'DELETE' }),
   toggleMenuAvailability: (id) => request(`/menu/${id}/toggle-availability`, { method: 'PATCH' }),
   toggleMenuFeatured: (id) => request(`/menu/${id}/toggle-featured`, { method: 'PATCH' }),
   toggleKitchenPrep: (id) => request(`/menu/${id}/toggle-kitchen`, { method: 'PATCH' }),
@@ -158,8 +159,8 @@ export const api = {
   toggleOffer: (id) => request(`/offers/${id}/toggle`, { method: 'PATCH' }),
   validateOfferBilling: (data) => request('/offers/validate-billing', { method: 'POST', body: data }),
 
-  // Image Upload
-  uploadImage: async (file) => {
+  // Image Upload (AWS S3)
+  uploadImage: async (file, dishName = '', prefix = '') => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async () => {
@@ -167,7 +168,12 @@ export const api = {
           const res = await fetch('/api/upload', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: reader.result, filename: file.name })
+            body: JSON.stringify({
+              image: reader.result,
+              filename: file.name,
+              dishName: dishName || '',
+              prefix: prefix || ''
+            })
           });
           const data = await res.json();
           if (!res.ok) throw new Error(data.error || 'Image upload failed');

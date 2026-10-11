@@ -97,6 +97,7 @@ export default function CustomerMenu({ menuItems, cart = {}, updateCartQty, open
                     alt={item.name}
                     className="w-full h-full object-cover"
                     loading="lazy"
+                    onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=300'; }}
                   />
                   {/* Food Item ID Badge */}
                   <span className="absolute top-1.5 left-1.5 bg-black/75 text-white font-mono text-[9px] font-extrabold px-1.5 py-0.5 rounded backdrop-blur-xs">

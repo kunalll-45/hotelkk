@@ -2907,6 +2907,7 @@ export default function CustomerHeroPage() {
                 src={selectedDishDetail.image_url || 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600'}
                 alt={selectedDishDetail.name}
                 className="w-full h-full object-cover"
+                onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600'; }}
               />
               <button
                 onClick={() => setSelectedDishDetail(null)}

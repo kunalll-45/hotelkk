@@ -164,5 +164,31 @@ export default function createMenuRouter(io) {
     }
   });
 
+  // Delete food item (removes item and cleans up S3 image if unused)
+  router.delete('/:id', (req, res) => {
+    try {
+      const deleted = MenuService.deleteMenuItem(req.params.id);
+      io.emit('menu:updated', { type: 'DELETED', id: req.params.id });
+
+      ActivityLogger.logActivity(
+        {
+          category: 'MENU',
+          action: 'MENU_DELETED',
+          title: `Dish Deleted: ${deleted.name}`,
+          description: `Removed "${deleted.name}" (${deleted.category}) from menu.`,
+          actorName: 'Manager',
+          actorRole: 'MANAGER',
+          severity: 'WARNING',
+          metadata: { id: deleted.id, name: deleted.name }
+        },
+        io
+      );
+
+      res.json({ success: true, message: 'Menu item deleted successfully', item: deleted });
+    } catch (err) {
+      res.status(400).json({ error: err.message });
+    }
+  });
+
   return router;
 }

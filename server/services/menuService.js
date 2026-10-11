@@ -1,4 +1,5 @@
 import { db } from '../db.js';
+import { deleteImageFromS3 } from './s3Service.js';
 
 export const MenuService = {
   getAllMenuItems(onlyAvailable = false) {
@@ -71,7 +72,53 @@ export const MenuService = {
       id
     );
 
+    // Safely cleanup old S3 image if replaced with a new one and not referenced elsewhere
+    if (imageUrl && existing.image_url && existing.image_url !== imageUrl) {
+      try {
+        const otherCount = db.prepare('SELECT COUNT(*) as cnt FROM menu_items WHERE image_url = ? AND id != ?').get(existing.image_url, id)?.cnt || 0;
+        let offerCount = 0;
+        try {
+          offerCount = db.prepare('SELECT COUNT(*) as cnt FROM offers WHERE image_url = ?').get(existing.image_url)?.cnt || 0;
+        } catch (e) { /* ignore if offers table is absent */ }
+
+        if (otherCount === 0 && offerCount === 0) {
+          deleteImageFromS3(existing.image_url).catch(err => {
+            console.warn(`Old S3 image cleanup notice for '${existing.image_url}':`, err.message);
+          });
+        }
+      } catch (checkErr) {
+        console.warn('Error during image reference check:', checkErr.message);
+      }
+    }
+
     return this.getMenuItemById(id);
+  },
+
+  deleteMenuItem(id) {
+    const existing = this.getMenuItemById(id);
+
+    db.prepare('DELETE FROM menu_items WHERE id = ?').run(id);
+
+    // Safely delete S3 image if not referenced by any other item or offer
+    if (existing.image_url) {
+      try {
+        const otherCount = db.prepare('SELECT COUNT(*) as cnt FROM menu_items WHERE image_url = ?').get(existing.image_url)?.cnt || 0;
+        let offerCount = 0;
+        try {
+          offerCount = db.prepare('SELECT COUNT(*) as cnt FROM offers WHERE image_url = ?').get(existing.image_url)?.cnt || 0;
+        } catch (e) { /* ignore */ }
+
+        if (otherCount === 0 && offerCount === 0) {
+          deleteImageFromS3(existing.image_url).catch(err => {
+            console.warn(`S3 image delete notice for '${existing.image_url}':`, err.message);
+          });
+        }
+      } catch (checkErr) {
+        console.warn('Error during image reference check on delete:', checkErr.message);
+      }
+    }
+
+    return existing;
   },
 
   toggleAvailability(id) {

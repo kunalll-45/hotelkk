@@ -575,6 +575,33 @@ export async function initDatabase() {
     console.warn('Orders schema migration notice:', e.message);
   }
 
+  // 21. Processed Images Metadata (Image Processing Workflow & Amazon RDS MySQL / SQLite)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS processed_images (
+      id TEXT PRIMARY KEY,
+      original_filename TEXT NOT NULL,
+      processed_filename TEXT,
+      original_s3_key TEXT NOT NULL,
+      processed_s3_key TEXT,
+      image_url TEXT,
+      status TEXT NOT NULL DEFAULT 'PENDING',
+      mime_type TEXT,
+      original_size INTEGER,
+      compressed_size INTEGER,
+      width INTEGER,
+      height INTEGER,
+      aspect_ratio TEXT DEFAULT '1:1',
+      entity_type TEXT,
+      entity_id TEXT,
+      uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      processed_at DATETIME,
+      error_message TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_processed_images_status ON processed_images(status);
+    CREATE INDEX IF NOT EXISTS idx_processed_images_orig_key ON processed_images(original_s3_key);
+    CREATE INDEX IF NOT EXISTS idx_processed_images_proc_key ON processed_images(processed_s3_key);
+  `);
+
   seedInitialData();
   saveDatabase();
 }

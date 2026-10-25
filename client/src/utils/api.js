@@ -159,20 +159,22 @@ export const api = {
   toggleOffer: (id) => request(`/offers/${id}/toggle`, { method: 'PATCH' }),
   validateOfferBilling: (data) => request('/offers/validate-billing', { method: 'POST', body: data }),
 
-  // Image Upload (AWS S3)
-  uploadImage: async (file, dishName = '', prefix = '') => {
+  // Image Upload & AWS S3 Processing Workflow
+  uploadImage: async (file, dishName = '', prefix = '', entityType = '', entityId = '') => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = async () => {
         try {
-          const res = await fetch('/api/upload', {
+          const res = await fetch(`${API_BASE}/upload`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               image: reader.result,
               filename: file.name,
               dishName: dishName || '',
-              prefix: prefix || ''
+              prefix: prefix || '',
+              entityType,
+              entityId
             })
           });
           const data = await res.json();
@@ -185,6 +187,10 @@ export const api = {
       reader.onerror = () => reject(new Error('Failed to read image file'));
       reader.readAsDataURL(file);
     });
-  }
+  },
+
+  getImageStatus: (imageIdOrKey) => request(`/upload/status/${encodeURIComponent(imageIdOrKey)}`),
+  getImageMetadata: (imageIdOrKey) => request(`/upload/metadata/${encodeURIComponent(imageIdOrKey)}`),
+  reportImageProcessed: (data) => request('/upload/processed', { method: 'POST', body: data })
 };
 

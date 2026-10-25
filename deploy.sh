@@ -2,7 +2,7 @@
 # =============================================================
 # EC2 Deployment Script for K K's Food House
 # Target: Ubuntu/Amazon Linux EC2 Instance
-# Public IP: 15.252.17.218
+# Application / Load Balancer DNS or Server IP: Configured in .env
 # =============================================================
 
 set -e
@@ -69,7 +69,7 @@ echo "============================================="
 echo "  ✅ Deployment Complete!"
 echo "============================================="
 echo ""
-echo "  App URL:   http://15.252.17.218:3000"
+echo "  App URL:   http://${PUBLIC_IP:-15.252.17.218}:3000"
 echo ""
 echo "  PM2 Commands:"
 echo "    pm2 status          - Check app status"

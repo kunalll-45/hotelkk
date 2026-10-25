@@ -18,6 +18,7 @@ export default function MenuManagementView() {
     sendToKitchen: 1
   });
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [imageProcessStatus, setImageProcessStatus] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
@@ -103,10 +104,35 @@ export default function MenuManagementView() {
 
     try {
       setUploadingImage(true);
-      const res = await api.uploadImage(file, formData.name || 'dish');
+      setImageProcessStatus('Uploading to S3 (new/)...');
+      const res = await api.uploadImage(file, formData.name || 'dish', 'new', 'menu_item', editingItem?.id);
       setFormData((prev) => ({ ...prev, imageUrl: res.url }));
+
+      if (res.status === 'PENDING' && res.imageId) {
+        setImageProcessStatus('Waiting for 1:1 square compression...');
+        let attempts = 0;
+        const interval = setInterval(async () => {
+          attempts++;
+          try {
+            const statusRes = await api.getImageStatus(res.imageId);
+            if (statusRes.isReady || statusRes.status === 'COMPLETED') {
+              clearInterval(interval);
+              setImageProcessStatus('1:1 square compressed image ready');
+              setTimeout(() => setImageProcessStatus(''), 2500);
+            } else if (attempts >= 6) {
+              clearInterval(interval);
+              setImageProcessStatus('Lambda processing queued');
+              setTimeout(() => setImageProcessStatus(''), 2500);
+            }
+          } catch (pollErr) {
+            clearInterval(interval);
+            setImageProcessStatus('');
+          }
+        }, 1500);
+      }
     } catch (err) {
       alert(err.message || 'Failed to upload dish image.');
+      setImageProcessStatus('');
     } finally {
       setUploadingImage(false);
     }
@@ -471,7 +497,13 @@ export default function MenuManagementView() {
                   {uploadingImage && (
                     <span className="text-[11px] text-primary font-bold flex items-center gap-1">
                       <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
-                      Uploading...
+                      {imageProcessStatus || 'Uploading...'}
+                    </span>
+                  )}
+                  {!uploadingImage && imageProcessStatus && (
+                    <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                      {imageProcessStatus}
                     </span>
                   )}
                 </div>

@@ -125,12 +125,18 @@ if (fs.existsSync(clientDist)) {
 }
 
 const HOST = process.env.HOST || '0.0.0.0';
-const PUBLIC_IP = process.env.PUBLIC_IP || '15.252.17.218';
+const rawPublic = (process.env.PUBLIC_IP || '').trim();
+const APP_URL = rawPublic
+  ? (rawPublic.startsWith('http://') || rawPublic.startsWith('https://')
+      ? rawPublic.replace(/\/$/, '')
+      : (rawPublic.includes(':') ? `http://${rawPublic}` : `http://${rawPublic}:${PORT}`))
+  : `http://localhost:${PORT}`;
+
 server.listen(PORT, HOST, () => {
   console.log(`=========================================`);
   console.log(`  K K's Food House Server Running        `);
-  console.log(`  Host: ${HOST}:${PORT}                   `);
-  console.log(`  Public: http://${PUBLIC_IP}:${PORT}     `);
+  console.log(`  Host:        ${HOST}:${PORT}           `);
+  console.log(`  App URL:     ${APP_URL}                `);
   console.log(`  Environment: ${process.env.NODE_ENV || 'production'} `);
   console.log(`=========================================`);
 });

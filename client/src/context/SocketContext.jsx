@@ -12,7 +12,7 @@ export function SocketProvider({ children }) {
   const { activeRole, waiterUser, selectedTableNumber, setRestaurantSettings } = useAuth();
 
   useEffect(() => {
-    // In dev or prod, connect to current host
+    // Connect to current host/origin
     const socketInstance = io(window.location.origin, {
       transports: ['websocket', 'polling']
     });

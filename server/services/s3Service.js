@@ -127,10 +127,75 @@ export function slugify(text = '') {
     .slice(0, 50);
 }
 
+// Default S3 object prefixes (configurable via environment variables)
+export const DEFAULT_UPLOAD_PREFIX = process.env.S3_UPLOAD_PREFIX || 'new';
+export const DEFAULT_PROCESSED_PREFIX = process.env.S3_PROCESSED_PREFIX || 'compressed';
+
+/**
+ * Helper to determine if a key represents an unprocessed/pending upload.
+ */
+export function isPendingKey(key = '') {
+  if (!key) return false;
+  const clean = key.replace(/^\/+/, '').replace(/^uploads\//, '');
+  const uploadPrefix = (process.env.S3_UPLOAD_PREFIX || 'new').replace(/^\/+|\/+$/g, '');
+  return clean.startsWith(`${uploadPrefix}/`) || clean.startsWith('new/');
+}
+
+/**
+ * Determines the canonical expected processed S3 object key for an uploaded image.
+ * Matches the required 'compressed' naming convention (e.g. compressed/<filename>).
+ */
+export function getExpectedProcessedKey(rawKey = '') {
+  if (!rawKey) return '';
+  const clean = rawKey.replace(/^\/+/, '').replace(/^uploads\//, '');
+  const uploadPrefix = (process.env.S3_UPLOAD_PREFIX || 'new').replace(/^\/+|\/+$/g, '');
+  const processedPrefix = (process.env.S3_PROCESSED_PREFIX || 'compressed').replace(/^\/+|\/+$/g, '');
+
+  if (clean.startsWith(`${uploadPrefix}/`)) {
+    return clean.replace(new RegExp(`^${uploadPrefix}/`), `${processedPrefix}/`);
+  }
+  if (clean.startsWith('new/')) {
+    return clean.replace(/^new\//, `${processedPrefix}/`);
+  }
+  if (clean.startsWith(`${processedPrefix}/`)) {
+    return clean;
+  }
+  return `${processedPrefix}/${clean}`;
+}
+
+/**
+ * Generates all candidate keys for finding the processed image in S3,
+ * accommodating variations in the 'compressed' naming convention:
+ * 1. compressed/<basename> (Folder convention)
+ * 2. compressed/compressed-<basename> (Prefix + Folder)
+ * 3. compressed/<name>-compressed<ext> (Folder + Suffix)
+ * 4. compressed-<basename> (Root prefix)
+ * 5. <name>-compressed<ext> (Root suffix)
+ */
+export function getProcessedCandidateKeys(rawKey = '') {
+  if (!rawKey) return [];
+  const clean = rawKey.replace(/^\/+/, '').replace(/^uploads\//, '');
+  const basename = path.basename(clean);
+  const ext = path.extname(clean);
+  const nameWithoutExt = path.basename(clean, ext);
+  const processedPrefix = (process.env.S3_PROCESSED_PREFIX || 'compressed').replace(/^\/+|\/+$/g, '');
+
+  const candidates = [
+    `${processedPrefix}/${basename}`,
+    `${processedPrefix}/compressed-${basename}`,
+    `${processedPrefix}/${nameWithoutExt}-compressed${ext}`,
+    `compressed-${basename}`,
+    `${nameWithoutExt}-compressed${ext}`,
+    clean
+  ];
+
+  return Array.from(new Set(candidates));
+}
+
 /**
  * Generates a unique collision-resistant S3 object key.
- * When prefix is empty, stores directly in the root of the bucket:
- * e.g. paneer-butter-masala-1728514800000-a1b2c3d4.jpg
+ * By default, prefixes with 'new/' (configurable via S3_UPLOAD_PREFIX)
+ * so that AWS Lambda triggers exclusively on new/ uploads without recursion.
  */
 export function generateS3Key(originalFilename = '', mimeType = '', prefix = '', dishName = '') {
   const normalizedMime = mimeType ? mimeType.toLowerCase().trim() : '';
@@ -142,20 +207,22 @@ export function generateS3Key(originalFilename = '', mimeType = '', prefix = '',
     : slugify(path.basename(originalFilename || 'dish', extFromFilename)) || 'dish';
 
   const uniqueId = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
-  const cleanPrefix = prefix ? prefix.replace(/^\/+|\/+$/g, '') : '';
+  const effectivePrefix = prefix || process.env.S3_UPLOAD_PREFIX || 'new';
+  const cleanPrefix = effectivePrefix ? effectivePrefix.replace(/^\/+|\/+$/g, '') : 'new';
 
-  return cleanPrefix ? `${cleanPrefix}/${baseName}-${uniqueId}${finalExt}` : `${baseName}-${uniqueId}${finalExt}`;
+  return `${cleanPrefix}/${baseName}-${uniqueId}${finalExt}`;
 }
 
 /**
- * Uploads an image buffer directly to the AWS S3 bucket (no subfolders by default).
- * Returns the unique S3 object key and metadata.
+ * Uploads an image buffer directly to the AWS S3 bucket under the 'new/' prefix.
+ * Returns the unique S3 object key, expected processed key, and metadata.
  */
 export async function uploadImageToS3(buffer, originalFilename = 'image.jpg', mimeType = 'image/jpeg', prefix = '', dishName = '') {
   validateAwsConfig();
   validateImage(buffer, originalFilename, mimeType);
 
-  const key = generateS3Key(originalFilename, mimeType, prefix, dishName);
+  const effectivePrefix = prefix || process.env.S3_UPLOAD_PREFIX || 'new';
+  const key = generateS3Key(originalFilename, mimeType, effectivePrefix, dishName);
   const ext = path.extname(key);
   const contentType = mimeType && ALLOWED_MIME_TYPES.includes(mimeType) ? mimeType : (EXT_TO_MIME[ext] || 'image/jpeg');
 
@@ -273,7 +340,65 @@ export async function checkS3ObjectExists(key) {
 }
 
 /**
+ * Retrieves S3 object metadata using HeadObjectCommand.
+ * Returns null if object does not exist.
+ */
+export async function getS3ObjectMetadata(key) {
+  if (!key || !isS3Configured()) return null;
+
+  let normalizedKey = key.replace(/^\/+/, '');
+  if (normalizedKey.startsWith('uploads/')) {
+    normalizedKey = normalizedKey.replace(/^uploads\//, '');
+  }
+
+  try {
+    const client = getS3Client();
+    const bucketName = process.env.S3_BUCKET_NAME.trim();
+
+    const head = await client.send(new HeadObjectCommand({
+      Bucket: bucketName,
+      Key: normalizedKey
+    }));
+
+    return {
+      key: normalizedKey,
+      contentLength: head.ContentLength,
+      contentType: head.ContentType,
+      lastModified: head.LastModified,
+      etag: head.ETag,
+      metadata: head.Metadata
+    };
+  } catch (err) {
+    if (err.name === 'NotFound' || err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+      return null;
+    }
+    console.warn(`HeadObject metadata notice for key '${normalizedKey}':`, err.message);
+    return null;
+  }
+}
+
+/**
+ * Searches S3 for a processed version of an image matching candidate 'compressed' naming conventions.
+ */
+export async function findProcessedS3Object(rawKey) {
+  if (!rawKey || !isS3Configured()) return null;
+
+  const candidates = getProcessedCandidateKeys(rawKey);
+  for (const candidate of candidates) {
+    // Skip if it's the unprocessed new/ key itself
+    if (isPendingKey(candidate)) continue;
+
+    const meta = await getS3ObjectMetadata(candidate);
+    if (meta) {
+      return meta;
+    }
+  }
+  return null;
+}
+
+/**
  * Deletes an image object from AWS S3 safely when no longer needed.
+ * Also removes related processed/raw counterpart if present.
  */
 export async function deleteImageFromS3(key) {
   if (!key || !isS3Configured()) return false;
@@ -309,12 +434,29 @@ export async function deleteImageFromS3(key) {
     const client = getS3Client();
     const bucketName = process.env.S3_BUCKET_NAME.trim();
 
+    // Delete primary key
     await client.send(new DeleteObjectCommand({
       Bucket: bucketName,
       Key: normalizedKey
     }));
-
     console.log(`Deleted S3 object '${normalizedKey}' directly from bucket '${bucketName}'.`);
+
+    // Also attempt deletion of counterpart (e.g. if key was compressed/, try new/, and vice-versa)
+    const expectedOtherKey = normalizedKey.startsWith('new/')
+      ? getExpectedProcessedKey(normalizedKey)
+      : (normalizedKey.startsWith('compressed/') ? normalizedKey.replace(/^compressed\//, 'new/') : null);
+
+    if (expectedOtherKey && expectedOtherKey !== normalizedKey) {
+      try {
+        await client.send(new DeleteObjectCommand({
+          Bucket: bucketName,
+          Key: expectedOtherKey
+        }));
+      } catch (counterpartErr) {
+        // Silently ignore if counterpart does not exist
+      }
+    }
+
     return true;
   } catch (err) {
     console.warn(`Failed to delete S3 object '${normalizedKey}':`, err.message);

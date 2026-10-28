@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../../utils/api';
-import { formatTime, formatDate } from '../../../utils/formatters';
+import { formatTime, formatDate, getS3ImageUrl, isS3ImageUrl } from '../../../utils/formatters';
 import { soundManager } from '../../../utils/soundEffects';
 
 export default function OffersManagementView() {
@@ -392,22 +392,23 @@ export default function OffersManagementView() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredOffers.map((offer) => {
             const badge = getStatusBadge(offer.status);
-            // Fallback image resolution: uploaded offer image -> target menu item image -> placeholder
+            // Image resolution: only use real S3 images from offer or target menu item
             const targetItem = menuItems.find((m) => m.id === offer.target_item_id);
-            const displayImage = offer.image_url || targetItem?.image_url || null;
+            const rawDisplayImage = offer.image_url || targetItem?.image_url;
+            const displayImage = isS3ImageUrl(rawDisplayImage) ? getS3ImageUrl(rawDisplayImage) : null;
 
             return (
               <div
                 key={offer.id}
                 className="bg-white rounded-3xl border border-surface-container-high shadow-xs hover:shadow-md transition-shadow overflow-hidden flex flex-col justify-between"
               >
-                {/* Image Banner & Badge */}
-                <div className="relative h-40 bg-surface-container-high overflow-hidden">
+                {/* Image Banner & Badge - Original Aspect Ratio */}
+                <div className="relative h-44 bg-neutral-900 overflow-hidden flex items-center justify-center p-2">
                   {displayImage ? (
                     <img
                       src={displayImage}
                       alt={offer.title}
-                      className="w-full h-full object-cover"
+                      className="max-w-full max-h-full w-auto h-auto object-contain"
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 bg-linear-to-br from-amber-50 to-orange-100">
@@ -785,9 +786,15 @@ export default function OffersManagementView() {
                   )}
                 </div>
 
-                {formData.imageUrl && (
+                {formData.imageUrl && isS3ImageUrl(formData.imageUrl) && (
                   <div className="mt-2 flex items-center gap-3 bg-surface-container-low p-2 rounded-xl border border-gray-200">
-                    <img src={formData.imageUrl} alt="Preview" className="w-12 h-12 object-cover rounded-lg" />
+                    <div className="h-16 w-20 flex items-center justify-center bg-black/5 rounded-lg overflow-hidden p-1 shrink-0">
+                      <img
+                        src={getS3ImageUrl(formData.imageUrl)}
+                        alt="Preview"
+                        className="max-h-full max-w-full w-auto h-auto object-contain rounded"
+                      />
+                    </div>
                     <span className="text-[10px] font-mono text-gray-500 truncate flex-1">{formData.imageUrl}</span>
                     <button
                       type="button"

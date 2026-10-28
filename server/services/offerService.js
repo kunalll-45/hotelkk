@@ -36,11 +36,7 @@ export const OfferService = {
     return rows.map((r) => ({
       ...r,
       status: this.computeOfferStatus(r),
-      // Fallback image logic: uploaded image -> target menu item image -> default fallback
-      effective_image:
-        r.image_url ||
-        r.target_item_image ||
-        'https://images.unsplash.com/photo-1541832676-9b763b0239ab?w=800&auto=format&fit=crop&q=80'
+      effective_image: r.image_url || r.target_item_image || null
     }));
   },
 
@@ -68,10 +64,7 @@ export const OfferService = {
     return {
       ...offer,
       status: this.computeOfferStatus(offer),
-      effective_image:
-        offer.image_url ||
-        offer.target_item_image ||
-        'https://images.unsplash.com/photo-1541832676-9b763b0239ab?w=800&auto=format&fit=crop&q=80'
+      effective_image: offer.image_url || offer.target_item_image || null
     };
   },
 

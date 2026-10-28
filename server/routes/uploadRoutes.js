@@ -92,33 +92,28 @@ export default function createUploadRouter() {
         });
       }
 
-      // 4. Upload to S3 under the 'new/' prefix (triggers AWS Lambda)
+      // 4. Upload to S3 directly (preserves original aspect ratio and dimensions)
       const uploadPrefix = prefix || process.env.S3_UPLOAD_PREFIX || 'new';
       const s3Result = await uploadImageToS3(buffer, filename, mimeType, uploadPrefix, dishName);
 
-      // Determine expected processed key adhering to the 'compressed' naming convention
-      const expectedProcessedKey = getExpectedProcessedKey(s3Result.key);
       const imageId = `img_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
-
-      // Processed image URL path matching application retrieval flow (e.g. /uploads/compressed/...)
-      const processedUrl = `/uploads/${expectedProcessedKey}`;
-      const pendingUrl = `/uploads/${s3Result.key}`;
+      const imageUrl = `/uploads/${s3Result.key}`;
 
       // 5. Store image upload metadata in Amazon RDS MySQL (and local database)
       await saveImageUploadMetadata({
         id: imageId,
         originalFilename: filename,
-        processedFilename: path.basename(expectedProcessedKey),
+        processedFilename: path.basename(s3Result.key),
         originalS3Key: s3Result.key,
-        processedS3Key: expectedProcessedKey,
-        imageUrl: processedUrl,
-        status: 'PENDING',
+        processedS3Key: s3Result.key,
+        imageUrl: imageUrl,
+        status: 'COMPLETED',
         mimeType: s3Result.contentType,
         originalSize: s3Result.size,
-        compressedSize: null,
+        compressedSize: s3Result.size,
         width: null,
         height: null,
-        aspectRatio: '1:1',
+        aspectRatio: 'original',
         entityType: entityType || (dishName ? 'menu_item' : 'general'),
         entityId: entityId || null
       });
@@ -126,18 +121,17 @@ export default function createUploadRouter() {
       return res.json({
         success: true,
         imageId,
-        status: 'PENDING',
-        isReady: false,
+        status: 'COMPLETED',
+        isReady: true,
         key: s3Result.key,
         originalKey: s3Result.key,
-        processedKey: expectedProcessedKey,
-        url: processedUrl,
-        pendingUrl,
+        processedKey: s3Result.key,
+        url: imageUrl,
         filename: path.basename(s3Result.key),
         size: s3Result.size,
         contentType: s3Result.contentType,
-        aspectRatio: '1:1',
-        message: "Image uploaded under 'new/' prefix. Lambda processing pending for square compression."
+        aspectRatio: 'original',
+        message: "Image uploaded to AWS S3 in original format and size."
       });
     } catch (err) {
       console.error('S3 Upload endpoint error:', err);
@@ -160,39 +154,22 @@ export default function createUploadRouter() {
 
       let record = await getImageMetadata(identifier);
 
-      // If record is still PENDING, verify if the processed file has arrived in S3
-      if (record && record.status === 'PENDING') {
-        const found = await findProcessedS3Object(record.original_s3_key || identifier);
-        if (found) {
-          record = await updateImageProcessedMetadata(record.id, {
-            status: 'COMPLETED',
-            processed_s3_key: found.key,
-            processed_filename: path.basename(found.key),
-            compressed_size: found.contentLength,
-            mime_type: found.contentType || record.mime_type,
-            aspect_ratio: '1:1',
-            processed_at: new Date()
-          });
-        }
-      }
-
       if (!record) {
-        // If not in database, attempt direct S3 check
-        const directS3 = await findProcessedS3Object(identifier);
-        if (directS3) {
+        const cleanKey = identifier.replace(/^\/+/, '').replace(/^uploads\//, '');
+        const exists = await checkS3ObjectExists(cleanKey) || await checkS3ObjectExists(`new/${cleanKey}`);
+        if (exists) {
           return res.json({
             success: true,
             status: 'COMPLETED',
             isReady: true,
-            url: `/uploads/${directS3.key}`,
-            key: directS3.key,
-            size: directS3.contentLength,
-            aspectRatio: '1:1'
+            url: `/uploads/${cleanKey}`,
+            key: cleanKey,
+            aspectRatio: 'original'
           });
         }
 
         return res.status(404).json({
-          error: `Image '${identifier}' record not found.`,
+          error: `Image '${identifier}' not found in AWS S3.`,
           code: 'IMAGE_NOT_FOUND',
           status: 'NOT_FOUND',
           isReady: false
@@ -202,16 +179,16 @@ export default function createUploadRouter() {
       return res.json({
         success: true,
         imageId: record.id,
-        status: record.status,
-        isReady: record.status === 'COMPLETED',
-        url: record.image_url || `/uploads/${record.processed_s3_key}`,
+        status: 'COMPLETED',
+        isReady: true,
+        url: record.image_url || `/uploads/${record.original_s3_key || record.processed_s3_key}`,
         originalKey: record.original_s3_key,
         processedKey: record.processed_s3_key,
         originalSize: record.original_size,
-        compressedSize: record.compressed_size,
+        compressedSize: record.compressed_size || record.original_size,
         width: record.width,
         height: record.height,
-        aspectRatio: record.aspect_ratio || '1:1',
+        aspectRatio: record.aspect_ratio || 'original',
         uploadedAt: record.uploaded_at,
         processedAt: record.processed_at
       });
@@ -222,7 +199,7 @@ export default function createUploadRouter() {
   });
 
   // POST /api/upload/processed & POST /api/upload/callback
-  // AWS Lambda callback endpoint to record completed image processing & metadata into Amazon RDS MySQL
+  // Callback endpoint to record image processing & metadata into Amazon RDS MySQL
   router.post(['/processed', '/callback'], async (req, res) => {
     try {
       const {
@@ -237,7 +214,7 @@ export default function createUploadRouter() {
         size,
         width,
         height,
-        aspectRatio = '1:1',
+        aspectRatio = 'original',
         mimeType,
         format,
         errorMessage
@@ -270,7 +247,7 @@ export default function createUploadRouter() {
         record: updated
       });
     } catch (err) {
-      console.error('Lambda processed callback error:', err);
+      console.error('Processed callback error:', err);
       return res.status(500).json({ error: err.message });
     }
   });
@@ -298,12 +275,13 @@ export default function createUploadRouter() {
 }
 
 /**
- * Express middleware / router to securely stream uploaded images from S3 (or fallback to local disk).
+ * Express middleware / router to stream uploaded images exclusively from AWS S3.
  * Mounted at /uploads and /dishes.
  *
- * Implements requirement:
- * "The application must display the processed image to users only after processing has completed successfully.
- * Do not allow the application to treat an unprocessed image as a successfully processed image."
+ * Strictly adheres to:
+ * - Only show images actually retrieved from AWS S3 bucket.
+ * - Do NOT use placeholder, dummy, or locally stored images.
+ * - Serve images in their original format, dimensions, and size.
  */
 export function createUploadRetrievalRouter() {
   const router = express.Router();
@@ -317,133 +295,70 @@ export function createUploadRetrievalRouter() {
       return res.status(400).json({ error: 'Invalid file key.' });
     }
 
-    // 1. Check if the request is specifically targeting an unprocessed raw key (e.g. new/...)
-    const isUnprocessedKey = isPendingKey(rawKey);
-
-    if (isUnprocessedKey) {
-      // Check if the processed counterpart is already ready in S3
-      if (isS3Configured()) {
-        const processedS3 = await findProcessedS3Object(rawKey);
-        if (processedS3) {
-          // Serve the processed image instead
-          try {
-            const streamObj = await getImageStreamFromS3(processedS3.key);
-            res.setHeader('Content-Type', streamObj.contentType || 'image/jpeg');
-            if (streamObj.contentLength) res.setHeader('Content-Length', streamObj.contentLength);
-            if (streamObj.etag) res.setHeader('ETag', streamObj.etag);
-            res.setHeader('X-Image-Status', 'COMPLETED');
-            res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-            return streamObj.bodyStream.pipe(res);
-          } catch (e) {
-            // fall through
-          }
-        }
-      }
-
-      // Do NOT treat unprocessed image as successfully processed
-      res.setHeader('X-Image-Status', 'PENDING');
-      if (req.accepts('html') || req.headers.accept?.includes('application/json')) {
-        return res.status(202).json({
-          error: 'IMAGE_PROCESSING_PENDING',
-          status: 'PENDING',
-          message: 'Image is currently pending square compression by AWS Lambda and is not ready for display yet.'
-        });
-      }
-
-      // Return a lightweight SVG placeholder indicating pending processing if rendered in an <img> tag
-      const placeholderSvg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-          <rect width="400" height="400" fill="#f3f4f6"/>
-          <circle cx="200" cy="180" r="40" stroke="#d97706" stroke-width="4" stroke-dasharray="60 40" fill="none"/>
-          <text x="200" y="250" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="bold" fill="#374151">Processing 1:1 Image...</text>
-          <text x="200" y="275" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#6b7280">AWS Lambda compression in progress</text>
-        </svg>
-      `.trim();
-      res.setHeader('Content-Type', 'image/svg+xml');
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      return res.status(202).send(placeholderSvg);
+    if (!isS3Configured()) {
+      return res.status(503).json({
+        error: 'AWS S3 is not configured. Only images retrieved from AWS S3 are permitted.',
+        code: 'S3_NOT_CONFIGURED'
+      });
     }
 
-    // 2. Normal retrieval flow for processed images or legacy assets
-    // Generate candidates covering the required 'compressed' naming conventions
+    // Clean key stripping leading slashes and router prefixes
+    const cleanKey = rawKey.replace(/^\/+/, '').replace(/^uploads\//, '').replace(/^dishes\//, '');
+    const uploadPrefix = (process.env.S3_UPLOAD_PREFIX || 'new').replace(/^\/+|\/+$/g, '');
     const processedPrefix = (process.env.S3_PROCESSED_PREFIX || 'compressed').replace(/^\/+|\/+$/g, '');
+
+    // Build candidate S3 object keys to locate the real object in AWS S3
     const candidateKeys = [
-      rawKey,
-      `${processedPrefix}/${safeKeyName}`,
-      `compressed/${safeKeyName}`,
-      safeKeyName,
-      rawKey.replace(/^uploads\//, ''),
-      rawKey.replace(/^dishes\//, '')
+      cleanKey,                                        // Exact key e.g. new/filename.jpg or filename.jpg
+      `${uploadPrefix}/${safeKeyName}`,               // new/filename.jpg
+      `${processedPrefix}/${safeKeyName}`,            // compressed/filename.jpg
+      safeKeyName                                     // filename.jpg
     ];
 
-    if (isS3Configured()) {
-      for (const candidateKey of candidateKeys) {
-        // Skip keys that are known to be raw unprocessed 'new/' keys
-        if (isPendingKey(candidateKey)) continue;
+    if (cleanKey.startsWith(`${processedPrefix}/`)) {
+      candidateKeys.unshift(cleanKey.replace(new RegExp(`^${processedPrefix}/`), `${uploadPrefix}/`));
+    }
+    if (cleanKey.startsWith('compressed/')) {
+      candidateKeys.unshift(cleanKey.replace(/^compressed\//, 'new/'));
+    }
 
-        try {
-          const s3Object = await getImageStreamFromS3(candidateKey);
+    const uniqueCandidates = Array.from(new Set(candidateKeys.filter(Boolean)));
 
-          if (s3Object.contentType) {
-            res.setHeader('Content-Type', s3Object.contentType);
-          }
-          if (s3Object.contentLength) {
-            res.setHeader('Content-Length', s3Object.contentLength);
-          }
-          if (s3Object.etag) {
-            res.setHeader('ETag', s3Object.etag);
-          }
-          if (s3Object.lastModified) {
-            res.setHeader('Last-Modified', new Date(s3Object.lastModified).toUTCString());
-          }
+    for (const candidateKey of uniqueCandidates) {
+      try {
+        const s3Object = await getImageStreamFromS3(candidateKey);
 
-          res.setHeader('X-Image-Status', 'COMPLETED');
-          res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
-
-          return s3Object.bodyStream.pipe(res);
-        } catch (s3Err) {
-          if (s3Err.code === 'OBJECT_NOT_FOUND') {
-            continue;
-          }
-          console.error(`S3 GetObject notice for key '${candidateKey}':`, s3Err.message);
-          break;
+        if (s3Object.contentType) {
+          res.setHeader('Content-Type', s3Object.contentType);
         }
+        if (s3Object.contentLength) {
+          res.setHeader('Content-Length', s3Object.contentLength);
+        }
+        if (s3Object.etag) {
+          res.setHeader('ETag', s3Object.etag);
+        }
+        if (s3Object.lastModified) {
+          res.setHeader('Last-Modified', new Date(s3Object.lastModified).toUTCString());
+        }
+
+        res.setHeader('X-Image-Source', 'AWS-S3');
+        res.setHeader('X-S3-Key', candidateKey);
+        res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+
+        return s3Object.bodyStream.pipe(res);
+      } catch (s3Err) {
+        if (s3Err.code === 'OBJECT_NOT_FOUND') {
+          continue;
+        }
+        console.error(`S3 GetObject notice for key '${candidateKey}':`, s3Err.message);
+        break;
       }
     }
 
-    // 3. Fallback to local uploads directory (for existing seeded/legacy files)
-    const localPath = path.join(uploadsDir, safeKeyName);
-    if (fs.existsSync(localPath)) {
-      res.setHeader('X-Image-Status', 'LOCAL_FALLBACK');
-      return res.sendFile(localPath);
-    }
-
-    // 4. If image is not yet available, check if it's currently pending processing under new/
-    if (isS3Configured()) {
-      const uploadPrefix = (process.env.S3_UPLOAD_PREFIX || 'new').replace(/^\/+|\/+$/g, '');
-      const rawUploadKey = `${uploadPrefix}/${safeKeyName}`;
-      const pendingMeta = await getS3ObjectMetadata(rawUploadKey);
-
-      if (pendingMeta) {
-        res.setHeader('X-Image-Status', 'PENDING');
-        const placeholderSvg = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400">
-            <rect width="400" height="400" fill="#f3f4f6"/>
-            <circle cx="200" cy="180" r="40" stroke="#d97706" stroke-width="4" stroke-dasharray="60 40" fill="none"/>
-            <text x="200" y="250" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="bold" fill="#374151">Processing 1:1 Image...</text>
-            <text x="200" y="275" text-anchor="middle" font-family="sans-serif" font-size="12" fill="#6b7280">AWS Lambda compression in progress</text>
-          </svg>
-        `.trim();
-        res.setHeader('Content-Type', 'image/svg+xml');
-        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-        return res.status(202).send(placeholderSvg);
-      }
-    }
-
+    // No local fallback, no dummy/placeholder SVG. Only images actually retrieved from AWS S3 are served.
     return res.status(404).json({
-      error: `Image '${safeKeyName}' not found.`,
-      code: 'IMAGE_NOT_FOUND',
-      status: 'NOT_FOUND'
+      error: `Image '${safeKeyName}' not found in AWS S3 bucket.`,
+      code: 'IMAGE_NOT_FOUND_IN_S3'
     });
   });
 

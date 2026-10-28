@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../../../utils/api';
-import { formatCurrency } from '../../../utils/formatters';
+import { formatCurrency, getS3ImageUrl, isS3ImageUrl } from '../../../utils/formatters';
 
 export default function MenuManagementView() {
   const [menuItems, setMenuItems] = useState([]);
@@ -219,7 +219,7 @@ export default function MenuManagementView() {
       {/* Food Items Table */}
       <div className="bg-white rounded-3xl border border-surface-container-high overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full min-w-[900px] text-left text-xs">
             <thead className="bg-surface-container-low text-gray-700 font-extrabold uppercase tracking-wider border-b border-surface-container-high">
               <tr>
                 <th className="py-3.5 px-4 font-mono">Food ID</th>
@@ -265,13 +265,17 @@ export default function MenuManagementView() {
                       </td>
 
                       <td className="py-3 px-4 font-bold text-gray-900 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-surface-container-high overflow-hidden shrink-0">
-                          <img
-                            src={item.image_url || 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=200'}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=200'; }}
-                          />
+                        <div className="h-10 w-12 rounded-lg bg-surface-container-high overflow-hidden shrink-0 flex items-center justify-center p-0.5">
+                          {isS3ImageUrl(item.image_url) ? (
+                            <img
+                              src={getS3ImageUrl(item.image_url)}
+                              alt={item.name}
+                              className="max-h-full max-w-full w-auto h-auto object-contain rounded"
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                            />
+                          ) : (
+                            <span className="material-symbols-outlined text-gray-400 text-lg">restaurant</span>
+                          )}
                         </div>
                         <div>
                           <div className="flex items-center gap-1.5">
@@ -384,7 +388,7 @@ export default function MenuManagementView() {
       {/* Add / Edit Dish Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-surface-container-lowest max-w-md w-full rounded-3xl p-6 shadow-2xl border border-surface-container-highest max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface-container-lowest max-w-md w-full rounded-3xl p-4 sm:p-6 shadow-2xl border border-surface-container-highest max-h-[90dvh] overflow-y-auto">
             <div className="flex justify-between items-center pb-3 border-b border-gray-100">
               <h3 className="font-black text-base text-gray-900">
                 {editingItem ? `Edit Dish #${editingItem.id}` : 'Add New Dish to Menu'}
@@ -413,7 +417,7 @@ export default function MenuManagementView() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-gray-700 uppercase mb-1">Category *</label>
                   <select
@@ -517,10 +521,16 @@ export default function MenuManagementView() {
                   className="w-full px-3 py-2 bg-surface-container-low border border-gray-300 rounded-xl font-mono text-[11px] focus:outline-none"
                 />
 
-                {/* Image Preview */}
-                {formData.imageUrl && (
+                {/* Image Preview - Original Aspect Ratio */}
+                {formData.imageUrl && isS3ImageUrl(formData.imageUrl) && (
                   <div className="flex items-center gap-3 bg-surface-container-low p-2 rounded-xl border border-gray-200">
-                    <img src={formData.imageUrl} alt="Dish Preview" className="w-12 h-12 object-cover rounded-lg" />
+                    <div className="h-16 w-20 flex items-center justify-center bg-black/5 rounded-lg overflow-hidden p-1 shrink-0">
+                      <img
+                        src={getS3ImageUrl(formData.imageUrl)}
+                        alt="Dish Preview"
+                        className="max-h-full max-w-full w-auto h-auto object-contain rounded"
+                      />
+                    </div>
                     <span className="text-[10px] font-mono text-gray-500 truncate flex-1">{formData.imageUrl}</span>
                     <button
                       type="button"

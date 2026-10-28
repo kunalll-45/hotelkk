@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSocket } from '../../context/SocketContext';
 import { api } from '../../utils/api';
 import { soundManager } from '../../utils/soundEffects';
-import { parseDateTime, formatBookedBetween, formatCurrency } from '../../utils/formatters';
+import { parseDateTime, formatBookedBetween, formatCurrency, getS3ImageUrl, isS3ImageUrl } from '../../utils/formatters';
 import CustomerMenu from './CustomerMenu';
 import TopDishesSlider from '../../components/TopDishesSlider';
 import EditorialHeroSection from '../../components/EditorialHeroSection';
@@ -2901,31 +2901,60 @@ export default function CustomerHeroPage() {
       {selectedDishDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white max-w-md w-full rounded-3xl overflow-hidden shadow-2xl border border-surface-container-highest max-h-[90vh] flex flex-col">
-            {/* Modal Image */}
-            <div className="relative h-56 sm:h-64 bg-surface-container-low overflow-hidden shrink-0">
-              <img
-                src={selectedDishDetail.image_url || 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600'}
-                alt={selectedDishDetail.name}
-                className="w-full h-full object-cover"
-                onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600'; }}
-              />
-              <button
-                onClick={() => setSelectedDishDetail(null)}
-                className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
+            {/* Modal Image - Strictly AWS S3 Image with Original Aspect Ratio */}
+            {isS3ImageUrl(selectedDishDetail.image_url) ? (
+              <div className="relative bg-neutral-950 flex items-center justify-center p-3 min-h-[220px] max-h-[60vh] shrink-0 overflow-hidden">
+                <img
+                  src={getS3ImageUrl(selectedDishDetail.image_url)}
+                  alt={selectedDishDetail.name}
+                  className="max-w-full max-h-[55vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+                />
+                <button
+                  onClick={() => setSelectedDishDetail(null)}
+                  className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-md"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
 
-              <div className="absolute bottom-3 left-3 flex items-center gap-2">
-                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md ${selectedDishDetail.is_veg ? 'bg-emerald-950/80 text-emerald-200 border border-emerald-500/40' : 'bg-rose-950/80 text-rose-200 border border-rose-500/40'}`}>
-                  <span className={`w-2 h-2 rounded-full ${selectedDishDetail.is_veg ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
-                  {selectedDishDetail.is_veg ? 'Pure Veg' : 'Non-Veg'}
-                </span>
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-black/60 text-white backdrop-blur-md border border-white/20">
-                  {selectedDishDetail.category}
-                </span>
+                <div className="absolute bottom-3 left-3 flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md ${selectedDishDetail.is_veg ? 'bg-emerald-950/80 text-emerald-200 border border-emerald-500/40' : 'bg-rose-950/80 text-rose-200 border border-rose-500/40'}`}>
+                    <span className={`w-2 h-2 rounded-full ${selectedDishDetail.is_veg ? 'bg-emerald-400' : 'bg-rose-400'}`}></span>
+                    {selectedDishDetail.is_veg ? 'Pure Veg' : 'Non-Veg'}
+                  </span>
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-black/60 text-white backdrop-blur-md border border-white/20">
+                    {selectedDishDetail.category}
+                  </span>
+                </div>
+
+                <a
+                  href={getS3ImageUrl(selectedDishDetail.image_url)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur-md text-white text-[10px] font-bold flex items-center gap-1 shadow transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                  <span>Full Size</span>
+                </a>
               </div>
-            </div>
+            ) : (
+              <div className="relative p-5 bg-gradient-to-r from-amber-950/10 via-amber-900/5 to-transparent flex items-center justify-between border-b border-surface-container-high shrink-0">
+                <div className="flex items-center gap-2">
+                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${selectedDishDetail.is_veg ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${selectedDishDetail.is_veg ? 'bg-emerald-600' : 'bg-rose-600'}`}></span>
+                    {selectedDishDetail.is_veg ? 'Veg' : 'Non-Veg'}
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700">
+                    {selectedDishDetail.category}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setSelectedDishDetail(null)}
+                  className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center transition-transform hover:scale-110 cursor-pointer shadow-xs"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+            )}
 
             {/* Modal Content */}
             <div className="p-6 space-y-4 overflow-y-auto">

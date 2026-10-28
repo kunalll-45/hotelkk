@@ -29,11 +29,11 @@ export default function RoleSwitcherBar() {
     <div className="bg-primary-container text-on-primary-container text-xs px-4 py-2 flex flex-wrap items-center justify-between gap-3 border-b border-surface-container-high no-print z-50">
 
       {/* Role Switcher Tabs */}
-      <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/10">
+      <div className="max-w-full overflow-x-auto no-scrollbar whitespace-nowrap flex items-center gap-1.5 bg-black/40 p-1 rounded-lg border border-white/10">
         <button
           onClick={() => switchRole('Home')}
           data-sound="tab"
-          className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Home'
+          className={`shrink-0 whitespace-nowrap px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Home'
             ? 'bg-secondary-container text-on-secondary-container shadow-sm font-bold'
             : 'text-gray-300 hover:text-white hover:bg-white/10'
             }`}
@@ -45,7 +45,7 @@ export default function RoleSwitcherBar() {
         <button
           onClick={() => switchRole('Customer')}
           data-sound="tab"
-          className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Customer'
+          className={`shrink-0 whitespace-nowrap px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Customer'
             ? 'bg-secondary-container text-on-secondary-container shadow-sm font-bold'
             : 'text-gray-300 hover:text-white hover:bg-white/10'
             }`}
@@ -57,7 +57,7 @@ export default function RoleSwitcherBar() {
         <button
           onClick={() => switchRole('Waiter')}
           data-sound="tab"
-          className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Waiter'
+          className={`shrink-0 whitespace-nowrap px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Waiter'
             ? 'bg-secondary-container text-on-secondary-container shadow-sm font-bold'
             : 'text-gray-300 hover:text-white hover:bg-white/10'
             }`}
@@ -69,7 +69,7 @@ export default function RoleSwitcherBar() {
         <button
           onClick={() => switchRole('Manager')}
           data-sound="tab"
-          className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Manager'
+          className={`shrink-0 whitespace-nowrap px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Manager'
             ? 'bg-secondary-container text-on-secondary-container shadow-sm font-bold'
             : 'text-gray-300 hover:text-white hover:bg-white/10'
             }`}
@@ -81,7 +81,7 @@ export default function RoleSwitcherBar() {
         <button
           onClick={() => switchRole('Kitchen')}
           data-sound="tab"
-          className={`px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Kitchen'
+          className={`shrink-0 whitespace-nowrap px-3 py-1 rounded text-xs font-semibold flex items-center gap-1 transition-all ${activeRole === 'Kitchen'
             ? 'bg-amber-500 text-black shadow-sm font-black'
             : 'text-amber-300/80 hover:text-amber-200 hover:bg-white/10'
             }`}

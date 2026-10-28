@@ -105,3 +105,54 @@ export function formatBookedBetween(bookingTime) {
   return `Booked at ${formatTimePart(trimmed)}`;
 }
 
+/**
+ * Resolves an image URL so that only images actually stored in/retrieved
+ * from the AWS S3 bucket are returned.
+ * Rejects placeholder, dummy (such as Unsplash), and locally stored images.
+ * Does not force compressed/ or square ratios; preserves original dimensions and size.
+ */
+export function getS3ImageUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+
+  // Reject Unsplash, placeholders, and dummy images
+  if (
+    trimmed.includes('unsplash.com') ||
+    trimmed.includes('placeholder') ||
+    trimmed.includes('dummy') ||
+    trimmed.includes('via.placeholder.com')
+  ) {
+    return '';
+  }
+
+  // Data URLs (e.g. freshly selected file for preview in manager)
+  if (trimmed.startsWith('data:image')) {
+    return trimmed;
+  }
+
+  // Direct AWS S3 URLs
+  if (trimmed.includes('.amazonaws.com/')) {
+    return trimmed;
+  }
+
+  // Relative URLs hosted by our secure AWS S3 retrieval router (/uploads/*)
+  let clean = trimmed.replace(/^\/+/, '');
+  if (clean.startsWith('uploads/')) {
+    clean = clean.replace(/^uploads\//, '');
+  } else if (clean.startsWith('dishes/')) {
+    clean = clean.replace(/^dishes\//, '');
+  }
+
+  if (!clean) return '';
+  return `/uploads/${clean}`;
+}
+
+export function isS3ImageUrl(url) {
+  return Boolean(getS3ImageUrl(url));
+}
+
+// Backward compatibility alias: forwards directly to getS3ImageUrl
+export const getCompressedImageUrl = getS3ImageUrl;
+
+

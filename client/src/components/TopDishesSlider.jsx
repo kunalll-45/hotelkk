@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { formatCurrency } from '../utils/formatters';
+import { formatCurrency, getS3ImageUrl, isS3ImageUrl } from '../utils/formatters';
 import { soundManager } from '../utils/soundEffects';
 import { api } from '../utils/api';
-
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=1200&auto=format&fit=crop&q=80';
 
 export default function TopDishesSlider({ items = [], onSelectDish }) {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -145,9 +143,10 @@ export default function TopDishesSlider({ items = [], onSelectDish }) {
   }
 
   const activeSlide = slides[currentSlide] || slides[0];
-  const slideImage = imgErrorMap[activeSlide.id]
-    ? FALLBACK_IMAGE
-    : (activeSlide.image_url || FALLBACK_IMAGE);
+  const rawImageUrl = activeSlide.image_url;
+  const slideImage = (!imgErrorMap[activeSlide.id] && isS3ImageUrl(rawImageUrl))
+    ? getS3ImageUrl(rawImageUrl)
+    : null;
 
   const handleSlideClick = () => {
     if (activeSlide.isOffer) {
@@ -184,19 +183,27 @@ export default function TopDishesSlider({ items = [], onSelectDish }) {
         </div>
       )}
 
-      {/* Modern JioHotstar-Style Hero Banner Card */}
+      {/* Modern Hero Banner Card - Original Aspect Ratio */}
       <div
         onClick={handleSlideClick}
-        className="group relative w-full h-[360px] sm:h-[420px] md:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-black/10 bg-neutral-900 cursor-pointer transition-all duration-500 hover:shadow-amber-950/20"
+        className="group relative w-full h-[360px] sm:h-[420px] md:h-[480px] rounded-3xl overflow-hidden shadow-2xl border border-black/10 bg-neutral-950 cursor-pointer transition-all duration-500 hover:shadow-amber-950/20 flex items-center justify-center p-3"
       >
-        {/* Full-Fit Background Food Photo */}
-        <img
-          key={activeSlide.id}
-          src={slideImage}
-          alt={activeSlide.name}
-          onError={() => setImgErrorMap((prev) => ({ ...prev, [activeSlide.id]: true }))}
-          className="w-full h-full object-cover transition-transform duration-1000 ease-out group-hover:scale-105"
-        />
+        {slideImage ? (
+          <img
+            key={activeSlide.id}
+            src={slideImage}
+            alt={activeSlide.name}
+            onError={() => setImgErrorMap((prev) => ({ ...prev, [activeSlide.id]: true }))}
+            className="max-w-full max-h-full w-auto h-auto object-contain transition-transform duration-1000 ease-out group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-amber-950 via-neutral-900 to-black text-center p-8">
+            <span className="material-symbols-outlined text-6xl text-amber-400/80 mb-3">restaurant</span>
+            <span className="text-xs uppercase tracking-widest text-amber-300 font-mono font-bold mb-1">Signature Royal Dish</span>
+            <h2 className="text-2xl sm:text-4xl font-black text-white">{activeSlide.name}</h2>
+            <p className="text-xs sm:text-sm text-gray-300 max-w-md mt-2">{activeSlide.description}</p>
+          </div>
+        )}
 
         {/* Subtle Minimal Vignette: Gentle Bottom & Right Gradients so Photos Stay Bright & Crisp */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/15 to-transparent pointer-events-none"></div>

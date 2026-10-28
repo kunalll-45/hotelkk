@@ -722,40 +722,40 @@ function seedInitialData() {
 
     const items = [
       // Starters
-      [1, 'Paneer Tikka Royale', 'Starters', 280, 1, 1, 'Cottage cheese marinated in royal spices and charred in clay oven', 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=500&auto=format&fit=crop&q=60'],
-      [2, 'Chicken Seekh Kebab', 'Starters', 340, 1, 0, 'Minced spiced chicken skewers roasted over charcoal coals', 'https://images.unsplash.com/photo-1599488615731-7e5c2823ff28?w=500&auto=format&fit=crop&q=60'],
-      [3, 'Crispy Spring Rolls', 'Starters', 220, 1, 1, 'Golden crisp rolls filled with stir-fried seasoned vegetables', 'https://images.unsplash.com/photo-1544025162-d76694265947?w=500&auto=format&fit=crop&q=60'],
-      [4, 'Tandoori Stuffed Mushroom', 'Starters', 260, 1, 1, 'Juicy button mushrooms filled with herb cheese and roasted', 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=500&auto=format&fit=crop&q=60'],
-      [5, 'Amritsari Fish Fry', 'Starters', 380, 1, 0, 'Carom-seed spiced crispy fish fillets served with mint dip', 'https://images.unsplash.com/photo-1534422298391-e4f8c172dddb?w=500&auto=format&fit=crop&q=60'],
+      [1, 'Paneer Tikka Royale', 'Starters', 280, 1, 1, 'Cottage cheese marinated in royal spices and charred in clay oven', null],
+      [2, 'Chicken Seekh Kebab', 'Starters', 340, 1, 0, 'Minced spiced chicken skewers roasted over charcoal coals', null],
+      [3, 'Crispy Spring Rolls', 'Starters', 220, 1, 1, 'Golden crisp rolls filled with stir-fried seasoned vegetables', null],
+      [4, 'Tandoori Stuffed Mushroom', 'Starters', 260, 1, 1, 'Juicy button mushrooms filled with herb cheese and roasted', null],
+      [5, 'Amritsari Fish Fry', 'Starters', 380, 1, 0, 'Carom-seed spiced crispy fish fillets served with mint dip', null],
 
       // Main Course
-      [6, "K K's Butter Chicken", 'Main Course', 420, 1, 0, 'Tender tandoori chicken simmered in rich creamy tomato velvet gravy', 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?w=500&auto=format&fit=crop&q=60'],
-      [7, 'Paneer Butter Masala', 'Main Course', 320, 1, 1, 'Fresh cottage cheese cubes in aromatic butter gravy with fenugreek', 'https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=500&auto=format&fit=crop&q=60'],
-      [8, 'Dal Makhani Gold', 'Main Course', 260, 1, 1, 'Black lentils slow-cooked overnight with white butter and cream', 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=500&auto=format&fit=crop&q=60'],
-      [9, 'Mutton Rogan Josh', 'Main Course', 480, 1, 0, 'Kashmiri style slow braised tender lamb in rich spiced gravy', 'https://images.unsplash.com/photo-1545247181-516773cae7be?w=500&auto=format&fit=crop&q=60'],
-      [10, 'Kadhai Paneer', 'Main Course', 310, 1, 1, 'Cottage cheese with bell peppers and freshly ground kadhai spices', 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&auto=format&fit=crop&q=60'],
+      [6, "K K's Butter Chicken", 'Main Course', 420, 1, 0, 'Tender tandoori chicken simmered in rich creamy tomato velvet gravy', null],
+      [7, 'Paneer Butter Masala', 'Main Course', 320, 1, 1, 'Fresh cottage cheese cubes in aromatic butter gravy with fenugreek', null],
+      [8, 'Dal Makhani Gold', 'Main Course', 260, 1, 1, 'Black lentils slow-cooked overnight with white butter and cream', null],
+      [9, 'Mutton Rogan Josh', 'Main Course', 480, 1, 0, 'Kashmiri style slow braised tender lamb in rich spiced gravy', null],
+      [10, 'Kadhai Paneer', 'Main Course', 310, 1, 1, 'Cottage cheese with bell peppers and freshly ground kadhai spices', null],
 
       // Breads
-      [11, 'Butter Naan', 'Breads', 60, 1, 1, 'Soft leavened tandoor bread brushed with butter', 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&auto=format&fit=crop&q=60'],
-      [12, 'Garlic Coriander Naan', 'Breads', 75, 1, 1, 'Fluffy naan coated with roasted minced garlic and fresh cilantro', 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=500&auto=format&fit=crop&q=60'],
-      [13, 'Tandoori Roti', 'Breads', 35, 1, 1, 'Whole wheat flatbread baked crisp in clay oven', 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&auto=format&fit=crop&q=60'],
-      [14, 'Laccha Paratha', 'Breads', 70, 1, 1, 'Multi-layered flaky whole wheat bread cooked in tandoor', 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?w=500&auto=format&fit=crop&q=60'],
+      [11, 'Butter Naan', 'Breads', 60, 1, 1, 'Soft leavened tandoor bread brushed with butter', null],
+      [12, 'Garlic Coriander Naan', 'Breads', 75, 1, 1, 'Fluffy naan coated with roasted minced garlic and fresh cilantro', null],
+      [13, 'Tandoori Roti', 'Breads', 35, 1, 1, 'Whole wheat flatbread baked crisp in clay oven', null],
+      [14, 'Laccha Paratha', 'Breads', 70, 1, 1, 'Multi-layered flaky whole wheat bread cooked in tandoor', null],
 
       // Rice & Biryani
-      [15, 'Royal Dum Chicken Biryani', 'Rice & Biryani', 390, 1, 0, 'Long grain basmati layered with marinated chicken, saffron and herbs', 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500&auto=format&fit=crop&q=60'],
-      [16, 'Hyderabadi Veg Biryani', 'Rice & Biryani', 290, 1, 1, 'Aromatic garden vegetables layered with dum-cooked fragrant rice', 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=500&auto=format&fit=crop&q=60'],
-      [17, 'Jeera Basmati Rice', 'Rice & Biryani', 180, 1, 1, 'Steamed basmati tempered with toasted cumin seeds and pure ghee', 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=500&auto=format&fit=crop&q=60'],
+      [15, 'Royal Dum Chicken Biryani', 'Rice & Biryani', 390, 1, 0, 'Long grain basmati layered with marinated chicken, saffron and herbs', null],
+      [16, 'Hyderabadi Veg Biryani', 'Rice & Biryani', 290, 1, 1, 'Aromatic garden vegetables layered with dum-cooked fragrant rice', null],
+      [17, 'Jeera Basmati Rice', 'Rice & Biryani', 180, 1, 1, 'Steamed basmati tempered with toasted cumin seeds and pure ghee', null],
 
       // Beverages & Water
-      [18, 'Special Masala Chai', 'Beverages', 50, 1, 1, 'Brewed with cardamom, ginger, and aromatic house spices', 'https://images.unsplash.com/photo-1576092768241-dec231879fc3?w=500&auto=format&fit=crop&q=60'],
-      [19, 'Kesar Mango Lassi', 'Beverages', 120, 1, 1, 'Thick chilled yogurt blended with Alphonso mango pulp and saffron', 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=500&auto=format&fit=crop&q=60'],
-      [20, 'Fresh Lime Soda (Sweet/Salt)', 'Beverages', 80, 1, 1, 'Refreshing sparkling limeade tailored to your preference', 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=500&auto=format&fit=crop&q=60'],
-      [21, 'Packaged Mineral Water (1L)', 'Beverages', 30, 1, 1, 'Chilled sealed natural mineral water bottle', 'https://images.unsplash.com/photo-1548839140-29a749e1bc4e?w=500&auto=format&fit=crop&q=60'],
+      [18, 'Gadegaon Special Chai', 'Beverages', 50, 1, 1, 'Brewed with cardamom, ginger, and aromatic house spices', '/uploads/new/gadegaon-special-chai-1793026676142-ad781d536813.jpeg'],
+      [19, 'Kesar Mango Lassi', 'Beverages', 120, 1, 1, 'Thick chilled yogurt blended with Alphonso mango pulp and saffron', null],
+      [20, 'Fresh Lime Soda (Sweet/Salt)', 'Beverages', 80, 1, 1, 'Refreshing sparkling limeade tailored to your preference', null],
+      [21, 'Packaged Mineral Water (1L)', 'Beverages', 30, 1, 1, 'Chilled sealed natural mineral water bottle', null],
 
       // Desserts
-      [22, 'Gulab Jamun with Rabri (2 pcs)', 'Desserts', 140, 1, 1, 'Hot golden milk dumplings served on a bed of chilled saffron rabri', 'https://images.unsplash.com/photo-1589119908995-c6837fa14d48?w=500&auto=format&fit=crop&q=60'],
-      [23, 'Kolkata Rasmalai (2 pcs)', 'Desserts', 150, 1, 1, 'Soft spongy cottage cheese discs soaked in cardamom pistachio milk', 'https://images.unsplash.com/photo-1589119908995-c6837fa14d48?w=500&auto=format&fit=crop&q=60'],
-      [24, 'Sizzling Chocolate Brownie', 'Desserts', 210, 1, 1, 'Warm fudge brownie topped with vanilla ice cream and hot chocolate sauce', 'https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=500&auto=format&fit=crop&q=60']
+      [22, 'Gulab Jamun with Rabri (2 pcs)', 'Desserts', 140, 1, 1, 'Hot golden milk dumplings served on a bed of chilled saffron rabri', null],
+      [23, 'Kolkata Rasmalai (2 pcs)', 'Desserts', 150, 1, 1, 'Soft spongy cottage cheese discs soaked in cardamom pistachio milk', null],
+      [24, 'Sizzling Chocolate Brownie', 'Desserts', 210, 1, 1, 'Warm fudge brownie topped with vanilla ice cream and hot chocolate sauce', null]
     ];
 
     for (const item of items) {
@@ -955,7 +955,7 @@ function ensureTodayData() {
       activeStart,
       activeEnd,
       '20% OFF',
-      'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=800&auto=format&fit=crop&q=80'
+      null
     );
 
     // Offer 2: Scheduled / Upcoming starting in 4 days ("Coming Soon" Pizza / Kebab Special)
@@ -971,7 +971,7 @@ function ensureTodayData() {
       upcomingStart,
       upcomingEnd,
       'Coming Soon',
-      'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=800&auto=format&fit=crop&q=80'
+      null
     );
 
     // Offer 3: Flat ₹100 OFF on Family Dinner
@@ -987,7 +987,7 @@ function ensureTodayData() {
       flatStart,
       flatEnd,
       'Save ₹100',
-      'https://images.unsplash.com/photo-1541832676-9b763b0239ab?w=800&auto=format&fit=crop&q=80'
+      null
     );
   }
 }
